@@ -2,10 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { Play, Star, Clock, ChevronRight, TrendingUp, ChevronLeft } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useGetNewReleases } from "@workspace/api-client-react";
 import { AnimeCardSkeleton } from "@/components/anime-card";
-import { useQuery } from "@tanstack/react-query";
-import { getListEpisodesQueryKey } from "@workspace/api-client-react";
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
@@ -68,6 +65,53 @@ const POPULAR_QUERY = `{
     }
   }
 }`;
+
+const RECENT_EPISODES_QUERY = `{
+  Page(perPage: 24) {
+    airingSchedules(
+      airingAt_lesser: ${Math.floor(Date.now() / 1000)}
+      sort: TIME_DESC
+      notYetAired: false
+    ) {
+      id
+      episode
+      airingAt
+      media {
+        id
+        title { romaji english }
+        coverImage { extraLarge large }
+        averageScore
+        format
+        isAdult
+      }
+    }
+  }
+}`;
+
+interface AiringEpisode {
+  id: number;
+  episode: number;
+  airingAt: number;
+  media: {
+    id: number;
+    title: { romaji: string; english?: string | null };
+    coverImage: { extraLarge?: string; large?: string };
+    averageScore?: number | null;
+    format?: string | null;
+    isAdult: boolean;
+  };
+}
+
+async function fetchRecentEpisodes(): Promise<AiringEpisode[]> {
+  const res = await fetch("https://graphql.anilist.co", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: RECENT_EPISODES_QUERY }),
+  });
+  const json = await res.json();
+  const schedules: AiringEpisode[] = json?.data?.Page?.airingSchedules ?? [];
+  return schedules.filter((s) => !s.media.isAdult);
+}
 
 function stripHtml(html: string): string {
   return html
@@ -218,15 +262,19 @@ export default function Home() {
 
   const [heroAnime, setHeroAnime] = useState<AniMedia[]>([]);
   const [popularAnime, setPopularAnime] = useState<AniMedia[]>([]);
+  const [recentEpisodes, setRecentEpisodes] = useState<AiringEpisode[]>([]);
   const [aniLoading, setAniLoading] = useState(true);
-
-  const { data: newReleases, isLoading: newLoading } = useGetNewReleases();
 
   useEffect(() => {
     setAniLoading(true);
-    Promise.all([fetchAniList(HERO_QUERY), fetchAniList(POPULAR_QUERY)]).then(([hero, popular]) => {
+    Promise.all([
+      fetchAniList(HERO_QUERY),
+      fetchAniList(POPULAR_QUERY),
+      fetchRecentEpisodes(),
+    ]).then(([hero, popular, recent]) => {
       setHeroAnime(hero.filter((m) => m.bannerImage));
       setPopularAnime(popular);
+      setRecentEpisodes(recent);
       setAniLoading(false);
     });
   }, []);
@@ -265,13 +313,6 @@ export default function Home() {
   };
 
   const currentAnime = slides[slide];
-  // We still use DB episodes for the "Latest Episodes" section
-  const { data: slideEpisodes } = useQuery({
-    queryKey: getListEpisodesQueryKey(0),
-    queryFn: () => Promise.resolve([]),
-    enabled: false,
-  });
-  void slideEpisodes;
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -338,7 +379,7 @@ export default function Home() {
 
       <div className="flex gap-0 items-start">
         <div className="flex-1 min-w-0">
-          {/* Latest Episodes from DB */}
+          {/* Latest Episodes — from AniList airing schedules */}
           <section className="px-4 sm:px-6 py-6 sm:py-8 border-b border-white/5">
             <div className="flex items-center justify-between mb-4 sm:mb-5">
               <div className="flex items-center gap-2 sm:gap-3">
@@ -352,37 +393,42 @@ export default function Home() {
               </div>
             </div>
             <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-              {newLoading
+              {aniLoading
                 ? Array.from({ length: 8 }).map((_, i) => <AnimeCardSkeleton key={i} />)
-                : (Array.isArray(newReleases) ? newReleases : []).slice(0, 8).map((ep) => (
-                    <motion.div key={ep.id} variants={fadeUp}>
-                      <Link href={`/watch/${ep.id}`}>
-                        <div className="group cursor-pointer border border-white/5 hover:border-white/20 transition-all overflow-hidden" data-testid={`ep-card-${ep.id}`}>
-                          <div className="relative aspect-video overflow-hidden">
-                            <img src={ep.thumbnailUrl} alt={ep.title} className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                              <Play className="w-6 h-6 text-white fill-white" />
-                            </div>
-                            <div className="absolute bottom-1 right-1">
-                              <span className="text-[8px] font-mono bg-black/80 text-white/60 px-1.5 py-0.5 uppercase">{ep.type}</span>
-                            </div>
-                            {ep.rating && (
-                              <div className="absolute top-1 left-1">
-                                <span className="flex items-center gap-0.5 text-[8px] font-mono bg-black/80 text-white/70 px-1.5 py-0.5">
-                                  <Star className="w-2 h-2" />{ep.rating.toFixed(1)}
-                                </span>
+                : recentEpisodes.slice(0, 8).map((ep) => {
+                    const title = ep.media.title.english || ep.media.title.romaji;
+                    const cover = ep.media.coverImage.extraLarge || ep.media.coverImage.large || "";
+                    const score = ep.media.averageScore ? (ep.media.averageScore / 10).toFixed(1) : null;
+                    return (
+                      <motion.div key={ep.id} variants={fadeUp}>
+                        <Link href={`/anime/al/${ep.media.id}`}>
+                          <div className="group cursor-pointer border border-white/5 hover:border-white/20 transition-all overflow-hidden">
+                            <div className="relative aspect-video overflow-hidden">
+                              <img src={cover} alt={title} className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105" />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                                <Play className="w-6 h-6 text-white fill-white" />
                               </div>
-                            )}
+                              <div className="absolute bottom-1 right-1">
+                                <span className="text-[8px] font-mono bg-black/80 text-white/60 px-1.5 py-0.5 uppercase">SUB</span>
+                              </div>
+                              {score && (
+                                <div className="absolute top-1 left-1">
+                                  <span className="flex items-center gap-0.5 text-[8px] font-mono bg-black/80 text-white/70 px-1.5 py-0.5">
+                                    <Star className="w-2 h-2" />{score}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-2 sm:p-2.5">
+                              <p className="text-[9px] font-mono text-white/30 uppercase tracking-widest truncate mb-0.5">{title}</p>
+                              <p className="text-white text-xs font-medium line-clamp-2 leading-snug">Episode {ep.episode}</p>
+                              <p className="text-white/30 text-[9px] font-mono mt-1">EP {ep.episode}</p>
+                            </div>
                           </div>
-                          <div className="p-2 sm:p-2.5">
-                            <p className="text-[9px] font-mono text-white/30 uppercase tracking-widest truncate mb-0.5">{ep.animeTitle}</p>
-                            <p className="text-white text-xs font-medium line-clamp-2 leading-snug">{ep.title}</p>
-                            <p className="text-white/30 text-[9px] font-mono mt-1">EP {ep.episodeNumber}</p>
-                          </div>
-                        </div>
-                      </Link>
-                    </motion.div>
-                  ))}
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
             </motion.div>
           </section>
 
