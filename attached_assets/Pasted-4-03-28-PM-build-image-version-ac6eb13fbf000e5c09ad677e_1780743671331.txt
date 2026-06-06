@@ -1,0 +1,108 @@
+4:03:28 PM: build-image version: ac6eb13fbf000e5c09ad677efd8b7c3c2d0142b6 (noble-new-builds)
+4:03:28 PM: buildbot version: 9cf689c010ee4ab6135ad4a5e6b06ccb513df1ed
+4:03:28 PM: Fetching cached dependencies
+4:03:28 PM: Failed to fetch cache, continuing with build
+4:03:28 PM: Starting to prepare the repo for build
+4:03:28 PM: No cached dependencies found. Cloning fresh repo
+4:03:28 PM: git clone --filter=blob:none https://github.com/indusairavoto-afk/Anime-Canvas-UI119KAAM
+4:03:28 PM: Preparing Git Reference refs/heads/main
+4:03:29 PM: Installing dependencies
+4:03:29 PM: mise ~/.config/mise/config.toml tools: python@3.14.3
+4:03:30 PM: mise ~/.config/mise/config.toml tools: ruby@3.4.8
+4:03:30 PM: mise ~/.config/mise/config.toml tools: go@1.26.2
+4:03:30 PM: Downloading and installing node v22.22.3...
+4:03:30 PM: Downloading https://nodejs.org/dist/v22.22.3/node-v22.22.3-linux-x64.tar.xz...
+4:03:30 PM: Computing checksum with sha256sum
+4:03:30 PM: Checksums matched!
+4:03:33 PM: Now using node v22.22.3 (npm v10.9.8)
+4:03:33 PM: Enabling Node.js Corepack
+4:03:34 PM: pnpm workspaces detected
+4:03:34 PM: Installing npm packages using pnpm version 10.30.3
+4:03:34 PM: Scope: all 9 workspace projects
+4:03:34 PM: Lockfile is up to date, resolution step is skipped
+4:03:34 PM: Progress: resolved 1, reused 0, downloaded 0, added 0
+4:03:34 PM: Packages: +485
+4:03:34 PM: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+4:03:35 PM: Progress: resolved 485, reused 0, downloaded 166, added 127
+4:03:36 PM: Progress: resolved 485, reused 0, downloaded 180, added 131
+4:03:37 PM: Progress: resolved 485, reused 0, downloaded 323, added 188
+4:03:38 PM: Progress: resolved 485, reused 0, downloaded 485, added 485, done
+4:03:38 PM: .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+4:03:38 PM: .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+4:03:39 PM: devDependencies:
+4:03:39 PM: + prettier 3.8.3
+4:03:39 PM: + typescript 5.9.3
+4:03:39 PM: . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+4:03:39 PM: . preinstall: Done
+4:03:39 PM: Done in 4.9s using pnpm v10.30.3
+4:03:39 PM: npm packages installed using pnpm
+4:03:39 PM: Successfully installed dependencies
+4:03:40 PM: Detected 0 framework(s)
+4:03:40 PM: Starting build script
+4:03:40 PM: Section completed: initializing
+4:03:42 PM: ​
+4:03:42 PM: Netlify Build                                                 
+4:03:42 PM: ────────────────────────────────────────────────────────────────
+4:03:42 PM: ​
+4:03:42 PM: ❯ Version
+4:03:42 PM:   @netlify/build 35.14.0
+4:03:42 PM: ​
+4:03:42 PM: ❯ Flags
+4:03:42 PM:   accountId: 69e75a2e358d391a5d3c3eb1
+4:03:42 PM:   baseRelDir: true
+4:03:42 PM:   buildId: 6a23f777d27d8a51bb47059c
+4:03:42 PM:   deployId: 6a23f777d27d8a51bb47059e
+4:03:42 PM:   packagePath: artifacts/anime-site
+4:03:42 PM: ​
+4:03:42 PM: ❯ Current directory
+4:03:42 PM:   /opt/build/repo
+4:03:42 PM: ​
+4:03:42 PM: ❯ Config file
+4:03:42 PM:   No config file was defined: using default values.
+4:03:42 PM: ​
+4:03:42 PM: ❯ Context
+4:03:42 PM:   production
+4:03:42 PM: ​
+4:03:42 PM: Build command from Netlify app                                
+4:03:42 PM: ────────────────────────────────────────────────────────────────
+4:03:42 PM: ​
+4:03:42 PM: $ pnpm --filter @workspace/anime-site... run build
+4:03:43 PM: Failed during stage 'building site': Build script returned non-zero exit code: 2 (https://ntl.fyi/exit-code-2)
+4:03:43 PM: Scope: 2 of 9 workspace projects
+4:03:43 PM: artifacts/anime-site build$ vite build --config vite.config.ts
+4:03:43 PM: artifacts/anime-site build: failed to load config from /opt/build/repo/artifacts/anime-site/vite.config.ts
+4:03:43 PM: artifacts/anime-site build: error during build:
+4:03:43 PM: artifacts/anime-site build: Error: PORT environment variable is required but was not provided.
+4:03:43 PM: artifacts/anime-site build:     at file:///opt/build/repo/artifacts/anime-site/node_modules/.vite-temp/vite.config.ts.timestamp-1780742023384-a9cef55e984b6.mjs:10:9
+4:03:43 PM: artifacts/anime-site build:     at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+4:03:43 PM: artifacts/anime-site build:     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+4:03:43 PM: artifacts/anime-site build:     at async loadConfigFromBundledFile (file:///opt/build/repo/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35936:12)
+4:03:43 PM: artifacts/anime-site build:     at async bundleAndLoadConfigFile (file:///opt/build/repo/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35824:17)
+4:03:43 PM: artifacts/anime-site build:     at async loadConfigFromFile (file:///opt/build/repo/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35791:42)
+4:03:43 PM: artifacts/anime-site build:     at async resolveConfig (file:///opt/build/repo/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:35440:22)
+4:03:43 PM: artifacts/anime-site build:     at async createBuilder (file:///opt/build/repo/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/chunks/config.js:33895:19)
+4:03:43 PM: artifacts/anime-site build:     at async CAC.<anonymous> (file:///opt/build/repo/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_tsx@4.21.0_yaml@2.8.4/node_modules/vite/dist/node/cli.js:629:10)
+4:03:43 PM: artifacts/anime-site build: Failed
+4:03:43 PM: /opt/build/repo/artifacts/anime-site:
+4:03:43 PM:  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/anime-site@0.0.0 build: `vite build --config vite.config.ts`
+4:03:43 PM: Exit status 1
+4:03:43 PM: ​
+4:03:43 PM: "build.command" failed                                        
+4:03:43 PM: ────────────────────────────────────────────────────────────────
+4:03:43 PM: ​
+4:03:43 PM:   Error message
+4:03:43 PM:   Command failed with exit code 1: pnpm --filter @workspace/anime-site... run build (https://ntl.fyi/exit-code-1)
+4:03:43 PM: ​
+4:03:43 PM:   Error location
+4:03:43 PM:   In Build command from Netlify app:
+4:03:43 PM:   pnpm --filter @workspace/anime-site... run build
+4:03:43 PM: ​
+4:03:43 PM:   Resolved config
+4:03:43 PM:   build:
+4:03:43 PM:     command: pnpm --filter @workspace/anime-site... run build
+4:03:43 PM:     commandOrigin: ui
+4:03:43 PM:     publish: /opt/build/repo/artifacts/anime-site/dist
+4:03:43 PM:     publishOrigin: ui
+4:03:43 PM: Build failed due to a user error: Build script returned non-zero exit code: 2
+4:03:43 PM: Failing build: Failed to build site
+4:03:44 PM: Finished processing build request in 15.962s
