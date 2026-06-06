@@ -367,5 +367,12 @@ export async function customFetch<T = unknown>(
     throw new ApiError(response, errorData, requestInfo);
   }
 
+  // Reject HTML responses — API endpoints should never return HTML.
+  // This catches cases like SPA catch-all redirects returning index.html for /api/* calls.
+  const responseContentType = response.headers.get("content-type") ?? "";
+  if (responseContentType.includes("text/html")) {
+    throw new ApiError(response, "Unexpected HTML response from API", requestInfo);
+  }
+
   return (await parseSuccessBody(response, responseType, requestInfo)) as T;
 }

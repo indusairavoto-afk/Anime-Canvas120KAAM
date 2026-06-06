@@ -354,7 +354,7 @@ export default function Home() {
             <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
               {newLoading
                 ? Array.from({ length: 8 }).map((_, i) => <AnimeCardSkeleton key={i} />)
-                : newReleases?.slice(0, 8).map((ep) => (
+                : (Array.isArray(newReleases) ? newReleases : []).slice(0, 8).map((ep) => (
                     <motion.div key={ep.id} variants={fadeUp}>
                       <Link href={`/watch/${ep.id}`}>
                         <div className="group cursor-pointer border border-white/5 hover:border-white/20 transition-all overflow-hidden" data-testid={`ep-card-${ep.id}`}>

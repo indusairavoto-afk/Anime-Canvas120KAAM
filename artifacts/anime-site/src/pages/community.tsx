@@ -42,8 +42,8 @@ export default function Community() {
     );
   };
 
-  const pinnedPosts = posts?.slice(0, 3) ?? [];
-  const regularPosts = posts?.slice(3) ?? [];
+  const pinnedPosts = Array.isArray(posts) ? posts.slice(0, 3) : [];
+  const regularPosts = Array.isArray(posts) ? posts.slice(3) : [];
 
   return (
     <div className="bg-black text-white min-h-screen">
