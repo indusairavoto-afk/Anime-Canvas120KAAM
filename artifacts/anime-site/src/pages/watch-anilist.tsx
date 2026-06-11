@@ -25,8 +25,19 @@ interface RelationNode {
   relationType: string;
 }
 
+interface JikanEpisode {
+  mal_id: number;
+  title: string | null;
+  title_romanji: string | null;
+  aired: string | null;
+  score: number | null;
+  filler: boolean;
+  recap: boolean;
+}
+
 interface AniMedia {
   id: number;
+  idMal?: number | null;
   title: { romaji: string; english?: string | null; native?: string | null };
   coverImage: { extraLarge?: string; large?: string };
   bannerImage?: string | null;
@@ -55,6 +66,22 @@ interface AniMedia {
   };
 }
 
+async function fetchAllJikanEpisodes(malId: number, totalEps: number): Promise<JikanEpisode[]> {
+  const all: JikanEpisode[] = [];
+  const maxPages = Math.ceil(Math.max(totalEps, 1) / 25) || 4;
+  for (let page = 1; page <= Math.min(maxPages, 8); page++) {
+    try {
+      const r = await fetch(`https://api.jikan.moe/v4/anime/${malId}/episodes?page=${page}`);
+      const json = await r.json();
+      const batch: JikanEpisode[] = json?.data ?? [];
+      all.push(...batch);
+      if (!json?.pagination?.has_next_page) break;
+      await new Promise((res) => setTimeout(res, 350));
+    } catch { break; }
+  }
+  return all;
+}
+
 const STATUS_MAP: Record<string, string> = {
   FINISHED: "FINISHED",
   RELEASING: "RELEASING",
@@ -67,6 +94,7 @@ const WATCH_QUERY = `
 query ($id: Int!) {
   Media(id: $id, type: ANIME) {
     id
+    idMal
     title { romaji english native }
     coverImage { extraLarge large }
     bannerImage
@@ -121,6 +149,8 @@ export default function WatchAniList() {
   const [, navigate] = useLocation();
 
   const [anime, setAnime] = useState<AniMedia | null>(null);
+  const [jikanEps, setJikanEps] = useState<JikanEpisode[]>([]);
+  const [jikanLoading, setJikanLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<"SUB" | "DUB">("SUB");
   const [server, setServer] = useState<"HD-1" | "HD-2">("HD-1");
@@ -140,13 +170,25 @@ export default function WatchAniList() {
   useEffect(() => {
     if (!animeId) return;
     setLoading(true);
+    setJikanEps([]);
     fetch("https://graphql.anilist.co", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: WATCH_QUERY, variables: { id: animeId } }),
     })
       .then((r) => r.json())
-      .then((json) => { if (json?.data?.Media) setAnime(json.data.Media); })
+      .then((json) => {
+        const media: AniMedia | null = json?.data?.Media ?? null;
+        if (media) {
+          setAnime(media);
+          if (media.idMal) {
+            setJikanLoading(true);
+            fetchAllJikanEpisodes(media.idMal, media.episodes ?? 0)
+              .then(setJikanEps)
+              .finally(() => setJikanLoading(false));
+          }
+        }
+      })
       .finally(() => setLoading(false));
   }, [animeId]);
 
@@ -170,13 +212,21 @@ export default function WatchAniList() {
   const status = STATUS_MAP[anime?.status ?? ""] ?? anime?.status ?? "";
 
   const streamEps = anime?.streamingEpisodes ?? [];
-  const episodeNumbers = totalEps > 0
-    ? Array.from({ length: totalEps }, (_, i) => i + 1)
-    : Array.from({ length: Math.max(currentEp + 4, streamEps.length, 12) }, (_, i) => i + 1);
+
+  const jikanMap = new Map<number, JikanEpisode>();
+  for (const ep of jikanEps) jikanMap.set(ep.mal_id, ep);
+
+  const knownCount = jikanEps.length > 0 ? Math.max(...jikanEps.map((e) => e.mal_id)) : 0;
+  const epCount = totalEps > 0 ? totalEps : Math.max(knownCount, currentEp + 4, streamEps.length, 12);
+  const episodeNumbers = Array.from({ length: epCount }, (_, i) => i + 1);
 
   const filteredEps = episodeNumbers.filter((n) => {
     if (!epSearch.trim()) return true;
-    return String(n).includes(epSearch.trim());
+    const q = epSearch.trim().toLowerCase();
+    const jep = jikanMap.get(n);
+    const titleMatch = (jep?.title ?? "").toLowerCase().includes(q)
+      || (jep?.title_romanji ?? "").toLowerCase().includes(q);
+    return String(n).includes(q) || titleMatch;
   });
 
   const getEpThumb = (n: number) => {
@@ -184,11 +234,26 @@ export default function WatchAniList() {
     return s?.thumbnail || cover;
   };
 
-  const getEpTitle = (n: number) => {
+  const getEpTitle = (n: number): string => {
+    const jep = jikanMap.get(n);
+    if (jep?.title) return jep.title;
+    if (jep?.title_romanji) return jep.title_romanji;
     const s = streamEps[n - 1];
     if (s?.title && s.title !== `Episode ${n}`) return s.title;
     return `Episode ${n}`;
   };
+
+  const getEpAired = (n: number): string | null => {
+    const jep = jikanMap.get(n);
+    if (!jep?.aired) return null;
+    try {
+      return new Date(jep.aired).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    } catch { return null; }
+  };
+
+  const getEpScore = (n: number): number | null => jikanMap.get(n)?.score ?? null;
+  const isEpFiller = (n: number): boolean => jikanMap.get(n)?.filler ?? false;
+  const isEpRecap = (n: number): boolean => jikanMap.get(n)?.recap ?? false;
 
   const relatedAnime: RelationNode[] = (anime?.relations?.edges ?? [])
     .map((e) => ({ ...e.node, relationType: e.relationType }))
@@ -564,24 +629,38 @@ export default function WatchAniList() {
 
           {/* Episodes scroll */}
           <div ref={epListRef} className="overflow-y-auto flex-1 max-h-[600px] xl:max-h-[calc(100vh-200px)]">
+            {/* Jikan loading indicator */}
+            {jikanLoading && (
+              <div className="flex items-center gap-2 px-4 py-2 text-[10px] font-mono text-white/25 border-b border-white/5">
+                <div className="w-2.5 h-2.5 border border-white/20 border-t-white/60 rounded-full animate-spin" />
+                Loading episode data...
+              </div>
+            )}
             {epGridView ? (
               <div className="grid grid-cols-4 gap-1 p-2">
                 {filteredEps.map((ep) => {
                   const active = ep === currentEp;
                   const watched = isWatched(ep);
+                  const filler = isEpFiller(ep);
                   return (
                     <Link key={ep} href={`/watch/al/${animeId}/${ep}`}>
                       <div
                         data-active={active}
-                        className={`aspect-square flex items-center justify-center text-xs font-mono cursor-pointer transition-colors border ${
+                        title={getEpTitle(ep)}
+                        className={`aspect-square flex items-center justify-center text-xs font-mono cursor-pointer transition-colors border relative ${
                           active
                             ? "bg-white text-black border-white font-bold"
+                            : filler
+                            ? "border-white/10 text-white/25 bg-white/[0.03] italic"
                             : watched
                             ? "border-white/10 text-white/30 bg-white/5"
                             : "border-white/10 text-white/50 hover:bg-white/10 hover:text-white"
                         }`}
                       >
                         {ep}
+                        {filler && !active && (
+                          <span className="absolute top-0.5 right-0.5 text-[6px] text-yellow-500/60">F</span>
+                        )}
                       </div>
                     </Link>
                   );
@@ -594,37 +673,60 @@ export default function WatchAniList() {
                   const watched = isWatched(ep);
                   const thumb = getEpThumb(ep);
                   const epTitle = getEpTitle(ep);
+                  const aired = getEpAired(ep);
+                  const score = getEpScore(ep);
+                  const filler = isEpFiller(ep);
+                  const recap = isEpRecap(ep);
                   return (
                     <Link key={ep} href={`/watch/al/${animeId}/${ep}`}>
                       <div
                         data-active={active}
-                        className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors ${
+                        className={`flex items-start gap-2.5 px-3 py-2 cursor-pointer transition-colors ${
                           active ? "bg-white/10" : "hover:bg-white/5"
                         }`}
                       >
                         {/* Thumbnail */}
-                        <div className="relative w-20 h-12 shrink-0 overflow-hidden bg-zinc-900">
+                        <div className="relative w-24 h-14 shrink-0 overflow-hidden bg-zinc-900">
                           <img
                             src={thumb}
                             alt={`EP ${ep}`}
                             className="w-full h-full object-cover"
                           />
                           {active && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                              <Play className="w-4 h-4 text-white fill-white" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                              <Play className="w-5 h-5 text-white fill-white" />
                             </div>
                           )}
                           {watched && !active && (
                             <div className="absolute bottom-0.5 right-0.5">
-                              <span className="text-[8px] font-mono bg-white/20 text-white px-1">✓</span>
+                              <span className="text-[8px] font-mono bg-black/70 text-white/60 px-1">✓</span>
                             </div>
                           )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5 flex items-center justify-between">
+                            <span className="text-[8px] font-mono text-white/60">{ep}</span>
+                            {score && (
+                              <span className="text-[8px] font-mono text-white/50">★{score.toFixed(1)}</span>
+                            )}
+                          </div>
                         </div>
                         {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-medium line-clamp-2 leading-snug ${active ? "text-white" : watched ? "text-white/40" : "text-white/80"}`}>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-start gap-1.5 flex-wrap mb-0.5">
+                            {filler && (
+                              <span className="text-[8px] font-mono bg-yellow-500/20 text-yellow-400/80 px-1 py-0.5 shrink-0">FILLER</span>
+                            )}
+                            {recap && (
+                              <span className="text-[8px] font-mono bg-white/10 text-white/40 px-1 py-0.5 shrink-0">RECAP</span>
+                            )}
+                          </div>
+                          <p className={`text-[11px] font-medium line-clamp-2 leading-snug ${
+                            active ? "text-white" : watched ? "text-white/40" : "text-white/80"
+                          }`}>
                             {ep}. {epTitle}
                           </p>
+                          {aired && (
+                            <p className="text-[9px] font-mono text-white/25 mt-0.5">Aired: {aired}</p>
+                          )}
                         </div>
                       </div>
                     </Link>
