@@ -5,7 +5,6 @@ import {
   Scissors, Bookmark, BookmarkCheck, ChevronDown, MessageSquare,
   ThumbsUp, ThumbsDown, CornerDownRight, Eye,
 } from "lucide-react";
-import { VideoPlayer } from "@/components/video-player";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useWatchProgress } from "@/hooks/useWatchProgress";
 
@@ -38,6 +37,7 @@ interface JikanEpisode {
 interface AniMedia {
   id: number;
   idMal?: number | null;
+  nextAiringEpisode?: { episode: number; airingAt: number } | null;
   title: { romaji: string; english?: string | null; native?: string | null };
   coverImage: { extraLarge?: string; large?: string };
   bannerImage?: string | null;
@@ -107,6 +107,7 @@ query ($id: Int!) {
     countryOfOrigin
     format
     studios(isMain: true) { nodes { name } }
+    nextAiringEpisode { episode airingAt }
     streamingEpisodes { title thumbnail url site }
     relations {
       edges {
@@ -216,8 +217,13 @@ export default function WatchAniList() {
   const jikanMap = new Map<number, JikanEpisode>();
   for (const ep of jikanEps) jikanMap.set(ep.mal_id, ep);
 
-  const knownCount = jikanEps.length > 0 ? Math.max(...jikanEps.map((e) => e.mal_id)) : 0;
-  const epCount = totalEps > 0 ? totalEps : Math.max(knownCount, currentEp + 4, streamEps.length, 12);
+  // Cap to aired episodes only: for airing shows use nextAiringEpisode.episode-1, for finished use totalEps
+  const airedCount = anime?.nextAiringEpisode
+    ? anime.nextAiringEpisode.episode - 1
+    : totalEps > 0
+    ? totalEps
+    : jikanEps.filter((e) => e.aired && new Date(e.aired) <= new Date()).length || currentEp;
+  const epCount = Math.max(airedCount, currentEp);
   const episodeNumbers = Array.from({ length: epCount }, (_, i) => i + 1);
 
   const filteredEps = episodeNumbers.filter((n) => {
@@ -357,18 +363,31 @@ export default function WatchAniList() {
         {/* ── CENTER: Player + controls ── */}
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Player */}
-          <div className="w-full aspect-video bg-black">
-            <VideoPlayer
-              src={undefined as unknown as string}
-              poster={banner}
-              title={title}
-              episodeLabel={`Episode ${currentEp}`}
-              onEnded={() => {
-                if (totalEps === 0 || currentEp < totalEps) {
-                  navigate(`/watch/al/${animeId}/${currentEp + 1}`);
+          <div className="w-full aspect-video bg-black relative">
+            {anime?.idMal ? (
+              <iframe
+                key={`${anime.idMal}-${currentEp}-${lang}-${server}`}
+                src={
+                  server === "HD-2"
+                    ? `https://vidsrc.cc/v2/embed/anime/${anime.idMal}/${currentEp}${lang === "DUB" ? "?dubbing=true" : ""}`
+                    : `https://vidsrc.me/embed/anime?mal=${anime.idMal}&episode=${currentEp}${lang === "DUB" ? "&type=dub" : ""}`
                 }
-              }}
-            />
+                className="w-full h-full"
+                allowFullScreen
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
+                referrerPolicy="no-referrer"
+                title={`${title} Episode ${currentEp}`}
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-zinc-950">
+                <img src={banner} alt={title} className="absolute inset-0 w-full h-full object-cover opacity-20" />
+                <div className="relative z-10 text-center">
+                  <div className="w-8 h-8 border border-white/20 border-t-white rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-white/40 text-xs font-mono">Loading stream...</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Warning banner */}
@@ -420,7 +439,7 @@ export default function WatchAniList() {
               <p className="text-[10px] text-white/30 font-mono uppercase tracking-widest mb-0.5">You are watching</p>
               <p className="text-sm font-semibold text-white">
                 Episode {currentEp}
-                {totalEps > 0 && <span className="text-white/30 font-normal"> / {totalEps}</span>}
+                {epCount > 0 && <span className="text-white/30 font-normal"> / {epCount}</span>}
               </p>
               <p className="text-[10px] text-white/25 mt-0.5">
                 If the current server doesn't work, try another server below.
@@ -593,7 +612,7 @@ export default function WatchAniList() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-white">Episodes</h3>
-              <span className="text-[10px] font-mono text-white/30">{totalEps > 0 ? totalEps : "?"}</span>
+              <span className="text-[10px] font-mono text-white/30">{epCount > 0 ? epCount : "?"}</span>
             </div>
             <div className="flex items-center gap-1">
               <button
