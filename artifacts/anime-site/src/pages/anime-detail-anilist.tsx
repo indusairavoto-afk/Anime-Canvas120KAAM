@@ -273,7 +273,7 @@ export default function AnimeDetailAniList() {
 
               {/* CTAs */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
-                <a href={streamLink.url} target="_blank" rel="noopener noreferrer">
+                <Link href={`/watch/al/${anime.id}/1`}>
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     className="flex items-center gap-2 sm:gap-3 bg-white text-black px-5 sm:px-8 py-3 sm:py-3.5 font-bold text-xs sm:text-sm uppercase tracking-widest hover:bg-white/90 transition-colors"
@@ -281,13 +281,7 @@ export default function AnimeDetailAniList() {
                     <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-black" />
                     Watch EP 1
                   </motion.button>
-                </a>
-
-                {streamLink.site !== "AniList" && (
-                  <span className="hidden sm:flex items-center text-[9px] font-mono text-white/25 uppercase tracking-widest self-center">
-                    on {streamLink.site}
-                  </span>
-                )}
+                </Link>
 
                 {anime.trailer?.site === "youtube" && (
                   <a href={`https://youtube.com/watch?v=${anime.trailer.id}`} target="_blank" rel="noopener noreferrer">

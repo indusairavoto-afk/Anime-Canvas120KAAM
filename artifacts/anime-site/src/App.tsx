@@ -40,6 +40,7 @@ import AnimeDetail from "@/pages/anime-detail";
 import AnimeDetailAniList from "@/pages/anime-detail-anilist";
 import CharacterDetail from "@/pages/character-detail";
 import Watch from "@/pages/watch";
+import WatchAniList from "@/pages/watch-anilist";
 import Community from "@/pages/community";
 import CommunityPostDetail from "@/pages/community-post-detail";
 import Schedule from "@/pages/schedule";
@@ -66,6 +67,7 @@ function Router() {
           <Route path="/anime/al/:id" component={AnimeDetailAniList} />
           <Route path="/character/:id" component={CharacterDetail} />
           <Route path="/anime/:id" component={AnimeDetail} />
+          <Route path="/watch/al/:animeId/:episode" component={WatchAniList} />
           <Route path="/watch/:episodeId" component={Watch} />
           <Route path="/community" component={Community} />
           <Route path="/community/:id" component={CommunityPostDetail} />
